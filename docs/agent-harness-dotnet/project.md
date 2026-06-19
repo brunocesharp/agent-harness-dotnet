@@ -17,7 +17,7 @@ Um agent para controlar modelos, nesse projeto é possivel mudar entre modelos d
 
 ## Status das Fases
 - [x] Discovery (em andamento)
-- [ ] Escopo
+- [x] Escopo (em andamento)
 - [ ] Especificação
 - [ ] Refinamento
 - [ ] Plano de Execução
