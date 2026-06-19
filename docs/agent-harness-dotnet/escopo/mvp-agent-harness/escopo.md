@@ -10,7 +10,7 @@
 
 ## Resumo Executivo
 
-Este escopo cobre a implementação do MVP do Agent Harness Dotnet, entregando a fundação técnica para orquestração de modelos de IA na empresa. O MVP abrange a seleção de modelos, a estrutura base do agent harness e o controle de skills — sem interface web, autenticação ou integrações externas.
+Este escopo cobre a implementação do MVP do Agent Harness Dotnet, entregando a fundação técnica para orquestração de modelos de IA na empresa. O MVP abrange a seleção de modelos, a estrutura base do agent harness, o controle de skills, o ciclo de execução stateful (query loop), o histórico de conversação, o controle de contexto e a memória persistente e de sessão — sem interface web, autenticação ou integrações externas.
 
 ---
 
@@ -24,7 +24,7 @@ Não existe nenhum processo, ferramenta ou fluxo para uso de modelos de IA inter
 
 ### Situação Desejada
 
-Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dinamicamente, com controle de skills plugável — acessível via API por devs, analistas, time de produto e designers.
+Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dinamicamente, com ciclo de execução stateful multi-turn, histórico de conversação por sessão, controle de contexto com orçamento de tokens, memória persistente e de sessão, e controle de skills plugável — acessível via API por devs, analistas, time de produto e designers.
 
 ---
 
@@ -35,6 +35,11 @@ Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dina
 - Escolha e troca de modelo de IA em runtime
 - Estrutura base do agent harness (contratos, ciclo de vida, execução)
 - Controle de skills (registro, ativação e execução via agent)
+- Query loop stateful com execução multi-turn e condições de parada distintas
+- Histórico de conversação por sessão (persistência, serialização, limpeza)
+- Controle de contexto com orçamento de tokens e compactação
+- Memória persistente cross-sessão e memória de sessão intra-turno
+- Prompt como control plane com montagem em camadas
 
 ### Não Inclui (Out of Scope)
 
@@ -109,6 +114,50 @@ Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dina
 | F3.3 | Ativação e desativação de skills | Permite habilitar/desabilitar skills sem removê-las | Skill desativada não é considerada pelo agent | Should |
 | F3.4 | Contrato base de skill | Interface que define o comportamento de uma skill | Qualquer skill implementa o contrato e é reconhecida pelo harness | Must |
 
+### Query Loop / Ciclo de Execução
+
+| # | Funcionalidade | Descrição | Critério de Aceite | Prioridade |
+|---|----------------|-----------|-------------------|------------|
+| F4.1 | Loop de execução stateful multi-turn | Agent mantém estado entre turnos, não processa cada mensagem de forma isolada | Agent acumula contexto e responde coerentemente entre turnos consecutivos | Must |
+| F4.2 | Controle de estado cross-turn | Estado do ciclo (contexto, turno atual, histórico ativo) é mantido e acessível | Estado persistido entre turnos sem perda de informação | Must |
+| F4.3 | Condições de parada distintas | Loop distingue: conclusão normal, falha, limite atingido e continuação aguardando input | Cada condição dispara comportamento diferente e retorna sinal apropriado | Must |
+| F4.4 | Contador e controle de turnos por sessão | Rastreia número de turnos e permite definir limite máximo | Sessão encerra automaticamente ao atingir limite de turnos configurado | Should |
+
+### Histórico de Conversação
+
+| # | Funcionalidade | Descrição | Critério de Aceite | Prioridade |
+|---|----------------|-----------|-------------------|------------|
+| F5.1 | Manutenção de histórico por sessão | Registra todas as mensagens (user/assistant) de uma sessão em ordem | Histórico recuperável com todas as mensagens na ordem correta | Must |
+| F5.2 | Serialização e recuperação de histórico | Histórico pode ser serializado e restaurado entre execuções | Sessão restaurada a partir de histórico serializado funciona corretamente | Must |
+| F5.3 | Filtragem de histórico por janela | Permite recuperar os N últimos turnos ou filtrar por critério | Consulta ao histórico retorna subconjunto configurável de mensagens | Should |
+| F5.4 | Limpeza e arquivamento de histórico | Histórico pode ser encerrado, arquivado ou descartado | Sessão encerrada não consome recursos; histórico arquivado permanece acessível | Could |
+
+### Controle de Contexto
+
+| # | Funcionalidade | Descrição | Critério de Aceite | Prioridade |
+|---|----------------|-----------|-------------------|------------|
+| F6.1 | Orçamento de tokens por sessão | Define limite de tokens consumíveis por sessão ou turno | Agent interrompe ou compacta antes de estourar o limite configurado | Must |
+| F6.2 | Monitoramento de uso de tokens | Rastreia consumo de tokens ao longo da sessão | Relatório de uso disponível por sessão e por turno | Should |
+| F6.3 | Compactação de contexto | Quando contexto aproxima do limite, resume mensagens antigas para liberar janela | Histórico compactado preserva informação essencial sem estourar contexto | Should |
+| F6.4 | Rebuild de contexto pós-compactação | Após compactação, reconstrói estado de sessão a partir do resumo | Agent retoma execução coerente após compactação | Could |
+
+### Memória
+
+| # | Funcionalidade | Descrição | Critério de Aceite | Prioridade |
+|---|----------------|-----------|-------------------|------------|
+| F7.1 | Memória de sessão | Armazena fatos e estado relevante da sessão atual (onde paramos, erros, decisões) | Informação de sessão acessível durante toda a execução e descartada ao encerrar | Must |
+| F7.2 | Memória persistente cross-sessão | Armazena fatos que devem sobreviver entre sessões (preferências, contexto do projeto) | Memória gravada em sessão anterior acessível em nova sessão | Must |
+| F7.3 | Índice de memória | Separação entre índice leve (ponteiros) e corpo das memórias (conteúdo) | Índice carregado por padrão; corpo carregado sob demanda | Should |
+| F7.4 | CRUD de memórias | API para criar, ler, atualizar e remover entradas de memória | Operações de memória disponíveis programaticamente e via agent | Should |
+
+### Prompt como Control Plane
+
+| # | Funcionalidade | Descrição | Critério de Aceite | Prioridade |
+|---|----------------|-----------|-------------------|------------|
+| F8.1 | Montagem de system prompt em camadas | System prompt composto por camadas: padrão do harness → configuração do projeto → customização por sessão → injeção por turno | Prompt final reflete todas as camadas na ordem correta | Must |
+| F8.2 | Precedência explícita entre camadas | Camadas com maior especificidade sobrescrevem ou complementam as mais genéricas | Conflito entre camadas é resolvido de forma previsível e documentada | Must |
+| F8.3 | Injeção de contexto dinâmico por turno | Informação relevante (estado de sessão, memória ativa) é injetada no prompt a cada turno | Contexto dinâmico refletido no comportamento do modelo sem alterar o prompt base | Should |
+
 ### Legenda de Prioridade (MoSCoW)
 
 - **Must:** Obrigatório para o lançamento
@@ -182,6 +231,10 @@ Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dina
 - [ ] Harness consegue selecionar e trocar modelos em runtime
 - [ ] Pelo menos 2 modelos de IA integrados e funcionando
 - [ ] Sistema de skills registrável e executável via agent
+- [ ] Query loop stateful executando sessões multi-turn sem perda de contexto
+- [ ] Histórico de conversação persistido e recuperável por sessão
+- [ ] Controle de contexto com orçamento de tokens configurável
+- [ ] Memória persistente gravando e recuperando entre sessões
 - [ ] Documentação mínima de uso para times internos
 
 ---
@@ -193,6 +246,8 @@ Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dina
 | R1 | SDKs dos modelos escolhidos não serem compatíveis com .NET Core | Média | Alto | Validar compatibilidade antes de iniciar implementação | brunocesharp |
 | R2 | Abstração de skills não cobrir casos de uso reais | Média | Alto | Prototipar com casos concretos antes de finalizar contrato | brunocesharp |
 | R3 | Baixa adoção interna por falta de documentação ou suporte | Baixa | Médio | Incluir documentação mínima como critério de lançamento | brunocesharp |
+| R4 | Estratégia de compactação de contexto degradar qualidade das respostas | Média | Alto | Validar com casos reais se resumos preservam informação suficiente | brunocesharp |
+| R5 | Escopo expandido aumentar complexidade e atrasar entrega | Alta | Médio | Priorizar Must-haves e validar MVP enxuto antes de implementar Should/Could | brunocesharp |
 
 ---
 
@@ -250,6 +305,7 @@ Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dina
 | Data | Situação | Responsável | Observação |
 |------|----------|-------------|------------|
 | 18/06/2026 | Rascunho | brunocesharp | Criação inicial |
+| 18/06/2026 | Rascunho | brunocesharp | Expansão do escopo: adicionados F4 (Query Loop), F5 (Histórico), F6 (Contexto), F7 (Memória), F8 (Prompt Control Plane) |
 
 ---
 
