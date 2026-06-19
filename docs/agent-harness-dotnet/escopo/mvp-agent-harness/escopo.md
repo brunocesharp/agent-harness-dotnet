@@ -10,7 +10,7 @@
 
 ## Resumo Executivo
 
-Este escopo cobre a implementação do MVP do Agent Harness Dotnet, entregando a fundação técnica para orquestração de modelos de IA na empresa. O MVP abrange a seleção de modelos, a estrutura base do agent harness, o controle de skills, o ciclo de execução stateful (query loop), o histórico de conversação, o controle de contexto e a memória persistente e de sessão — sem interface web, autenticação ou integrações externas.
+Este escopo cobre a implementação do MVP do Agent Harness Dotnet, entregando a fundação técnica para orquestração de modelos de IA na empresa. O MVP abrange a seleção de modelos, a estrutura base do agent harness, o controle de skills, o ciclo de execução stateful (query loop), o histórico de conversação, o controle de contexto, a memória persistente e de sessão, e uma interface web para interação direta com os agents — sem autenticação ou integrações externas.
 
 ---
 
@@ -24,7 +24,7 @@ Não existe nenhum processo, ferramenta ou fluxo para uso de modelos de IA inter
 
 ### Situação Desejada
 
-Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dinamicamente, com ciclo de execução stateful multi-turn, histórico de conversação por sessão, controle de contexto com orçamento de tokens, memória persistente e de sessão, e controle de skills plugável — acessível via API por devs, analistas, time de produto e designers.
+Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dinamicamente, com ciclo de execução stateful multi-turn, histórico de conversação por sessão, controle de contexto com orçamento de tokens, memória persistente e de sessão, controle de skills plugável e interface web para interação direta — acessível por devs, analistas, time de produto e designers.
 
 ---
 
@@ -40,10 +40,10 @@ Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dina
 - Controle de contexto com orçamento de tokens e compactação
 - Memória persistente cross-sessão e memória de sessão intra-turno
 - Prompt como control plane com montagem em camadas
+- Interface web para chat, gerenciamento de sessões, modelos e skills
 
 ### Não Inclui (Out of Scope)
 
-- Interface web — fora do MVP; pode ser adicionada em escopo futuro
 - Integrações externas — sem conectores com sistemas de terceiros neste momento
 - Autenticação — sem camada de auth neste MVP; será endereçada em escopo futuro
 
@@ -52,7 +52,6 @@ Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dina
 | Escopo relacionado | O que ele cobre | Fronteira com este escopo |
 |--------------------|-----------------|---------------------------|
 | Escopo futuro (auth) | Autenticação e autorização | Este escopo não implementa segurança de acesso |
-| Escopo futuro (UI) | Interface web | Este escopo entrega apenas API |
 
 ---
 
@@ -158,6 +157,17 @@ Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dina
 | F8.2 | Precedência explícita entre camadas | Camadas com maior especificidade sobrescrevem ou complementam as mais genéricas | Conflito entre camadas é resolvido de forma previsível e documentada | Must |
 | F8.3 | Injeção de contexto dinâmico por turno | Informação relevante (estado de sessão, memória ativa) é injetada no prompt a cada turno | Contexto dinâmico refletido no comportamento do modelo sem alterar o prompt base | Should |
 
+### Interface Web
+
+| # | Funcionalidade | Descrição | Critério de Aceite | Prioridade |
+|---|----------------|-----------|-------------------|------------|
+| F9.1 | Chat com agent via browser | Interface de chat para enviar mensagens e receber respostas do agent ativo | Usuário consegue iniciar conversa e receber respostas em tempo real via browser | Must |
+| F9.2 | Gerenciamento de sessões | Listar, iniciar e encerrar sessões de conversação pela interface | Sessões listadas com status; nova sessão iniciável e sessão ativa encerrável | Must |
+| F9.3 | Seleção e troca de modelo pela UI | Permite escolher ou trocar o modelo ativo diretamente pela interface | Troca de modelo refletida imediatamente na sessão ativa | Should |
+| F9.4 | Visualização e controle de skills | Lista skills disponíveis e permite ativar/desativar pela interface | Status de cada skill visível; ativação/desativação funcional via UI | Should |
+| F9.5 | Visualização do histórico de conversação | Exibe o histórico completo da sessão atual na interface | Histórico renderizado em ordem cronológica com distinção user/assistant | Must |
+| F9.6 | Visualização de memórias ativas | Exibe as memórias de sessão e persistentes carregadas no contexto atual | Memórias listadas com tipo (sessão/persistente) e conteúdo resumido | Could |
+
 ### Legenda de Prioridade (MoSCoW)
 
 - **Must:** Obrigatório para o lançamento
@@ -235,6 +245,7 @@ Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dina
 - [ ] Histórico de conversação persistido e recuperável por sessão
 - [ ] Controle de contexto com orçamento de tokens configurável
 - [ ] Memória persistente gravando e recuperando entre sessões
+- [ ] Interface web com chat funcional e gerenciamento de sessões
 - [ ] Documentação mínima de uso para times internos
 
 ---
@@ -306,6 +317,7 @@ Um agent harness em .NET Core que permite selecionar e trocar modelos de IA dina
 |------|----------|-------------|------------|
 | 18/06/2026 | Rascunho | brunocesharp | Criação inicial |
 | 18/06/2026 | Rascunho | brunocesharp | Expansão do escopo: adicionados F4 (Query Loop), F5 (Histórico), F6 (Contexto), F7 (Memória), F8 (Prompt Control Plane) |
+| 18/06/2026 | Rascunho | brunocesharp | Interface web incluída no escopo (F9): chat, sessões, modelos, skills, histórico |
 
 ---
 
