@@ -16,7 +16,7 @@ Um agent para controlar modelos, nesse projeto é possivel mudar entre modelos d
 - Escopo: `docs/agent-harness-dotnet/escopo/`
 
 ## Status das Fases
-- [ ] Discovery
+- [x] Discovery (em andamento)
 - [ ] Escopo
 - [ ] Especificação
 - [ ] Refinamento
